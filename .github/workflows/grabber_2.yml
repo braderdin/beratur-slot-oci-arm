@@ -16,7 +16,7 @@ permissions:
 jobs:
   attempt:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 14
     steps:
       - uses: actions/checkout@v7
 
@@ -52,7 +52,7 @@ jobs:
         id: attempt
         run: |
           set +e
-          for i in {1..22}; do
+          for i in {1..20}; do
             echo "🎯 --- Tembakan ARM ke-$i ---"
             python3 grabber.py --once || true
             sleep 30
