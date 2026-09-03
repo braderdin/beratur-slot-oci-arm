@@ -1,8 +1,8 @@
-name: old oci-arm-grabber
+name: new oci-arm-grabber
 
 on:
-#  schedule:
-#    - cron: '*/5 * * * *'
+  schedule:
+    - cron: '*/20 * * * *'
   workflow_dispatch: {}
 
 concurrency:
@@ -16,6 +16,7 @@ permissions:
 jobs:
   attempt:
     runs-on: ubuntu-latest
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
 
@@ -44,12 +45,18 @@ jobs:
           mkdir -p ~/.ssh
           printf '%s\n' "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > ~/.ssh/oci_arm_grabber.pub
 
+      - name: Check VM status
+        run: python3 check_vm_status.py
+
       - name: Attempt launch
         id: attempt
         run: |
           set +e
-          python3 grabber.py --once
-          echo "code=$?" >> "$GITHUB_OUTPUT"
+          for i in {1..20}; do
+            echo "🎯 --- Tembakan ARM ke-$i ---"
+            python3 grabber.py || true
+            sleep 30
+          done
 
       - name: Job summary
         if: always()
@@ -73,4 +80,3 @@ jobs:
       - name: Fail the run on real errors (not capacity misses)
         if: steps.attempt.outputs.code == '1'
         run: exit 1
-
