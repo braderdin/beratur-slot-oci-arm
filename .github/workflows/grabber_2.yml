@@ -1,8 +1,8 @@
-name: new oci-arm-grabber
+name: new oci-arm-grabber(Every 20 Mins)
 
 on:
-  schedule:
-    - cron: '*/20 * * * *'
+#  schedule:
+#    - cron: '*/20 * * * *'
   workflow_dispatch: {}
 
 concurrency:
@@ -52,7 +52,7 @@ jobs:
         id: attempt
         run: |
           set +e
-          for i in {1..20}; do
+          for i in {1..22}; do
             echo "🎯 --- Tembakan ARM ke-$i ---"
             python3 grabber.py --once || true
             sleep 30
