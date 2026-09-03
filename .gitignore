@@ -1,0 +1,16 @@
+# Kunci Penting Tidak Boleh Masuk Ke Github
+.env.local
+.env.gh.example
+.env.gh.secret
+.env.example
+.dev.vars
+trik-on-off.md
+archive/
+kod-yang-berjaya-sebelum-ini/
+kunci_oci/
+
+.venv/
+status.json
+grabber.log*
+grabber.pid
+loop.out

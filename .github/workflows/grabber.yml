@@ -1,0 +1,76 @@
+name: oci-arm-grabber
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+concurrency:
+  group: oci-arm-grabber
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  attempt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install -r requirements.txt
+
+      - name: Configure OCI credentials
+        run: |
+          mkdir -p ~/.oci
+          umask 077
+          printf '%s\n' "${{ secrets.OCI_PRIVATE_KEY }}" > ~/.oci/oci_api_key.pem
+          cat > ~/.oci/config <<EOF
+          [DEFAULT]
+          user=${{ secrets.OCI_USER_OCID }}
+          fingerprint=${{ secrets.OCI_FINGERPRINT }}
+          tenancy=${{ secrets.OCI_TENANCY_OCID }}
+          region=${{ secrets.OCI_REGION }}
+          key_file=$HOME/.oci/oci_api_key.pem
+          EOF
+
+      - name: Install SSH public key for the instance
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > ~/.ssh/oci_arm_grabber.pub
+
+      - name: Attempt launch
+        id: attempt
+        run: |
+          set +e
+          python3 grabber.py --once
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "### Result: exit code \`${{ steps.attempt.outputs.code }}\`"
+            echo '```json'
+            cat status.json 2>/dev/null || echo '{}'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Open issue on success
+        if: steps.attempt.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "🎉 OCI ARM instance secured!" \
+            --body "$(cat status.json)"
+
+      - name: Fail the run on real errors (not capacity misses)
+        if: steps.attempt.outputs.code == '1'
+        run: exit 1
+
