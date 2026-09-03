@@ -15,45 +15,44 @@ except ImportError:
     sys.exit(1)
 
 parser = argparse.ArgumentParser(description="Semak status VM sedia ada di OCI")
-parser.add_argument("--shape", choices=["AMD", "ARM"], default="ARM", help="Jenis shape VM yang hendak disemak")
+parser.add_argument("--shape", choices=["AMD", "ARM"], default="ARM", help="Jenis shape VM")
 args = parser.parse_args()
 
-def set_github_output(key: str, value: str):
-    """Hantar pembolehubah ke GitHub Actions Step Output"""
-    github_output = os.getenv("GITHUB_OUTPUT")
-    if github_output:
-        with open(github_output, "a") as f:
-            f.write(f"{key}={value}\n")
-
 def check_vm():
-    # Padankan pembolehubah persekitaran mengikut GitHub Secrets
-    tenancy = os.getenv("OCI_TENANCY_OCID") or os.getenv("OCI_TENANCY") or os.getenv("TENANCY")
-    user = os.getenv("OCI_USER_OCID") or os.getenv("OCI_USER") or os.getenv("USER")
-    fingerprint = os.getenv("OCI_FINGERPRINT") or os.getenv("FINGERPRINT")
-    region = os.getenv("OCI_REGION", "ap-singapore-1")
-    private_key = os.getenv("OCI_PRIVATE_KEY")
-    key_file = os.getenv("OCI_KEY_FILE")
-    compartment_id = os.getenv("OCI_COMPARTMENT_ID") or tenancy
+    config_path = os.path.expanduser("~/.oci/config")
+    config = None
 
-    config = {
-        "user": user,
-        "fingerprint": fingerprint,
-        "tenancy": tenancy,
-        "region": region,
-    }
+    # UTAMA: BACA DARI FAIL ~/.oci/config JIKA WUJUD
+    if os.path.exists(config_path):
+        try:
+            config = oci.config.from_file(config_path, "DEFAULT")
+        except Exception as e:
+            print(f"⚠️ Fail ~/.oci/config wujud tetapi gagal dibaca: {e}")
 
-    # Mengendalikan kunci Private Key sama ada berbentuk Teks Secret atau File Path
-    if private_key and private_key.strip():
-        config["key_content"] = private_key
-    elif key_file and os.path.exists(key_file):
-        config["key_file"] = key_file
-    else:
-        local_key = "kunci_oci/oci-oracle-api-key/braderdin007@gmail.com-2026-07-26T17_31_09.593Z.pem"
-        if os.path.exists(local_key):
-            config["key_file"] = local_key
+    # ALTERNATIF: BACA DARI ENVIRONMENT VARIABLES
+    if not config:
+        tenancy = os.getenv("OCI_TENANCY_OCID") or os.getenv("OCI_TENANCY") or os.getenv("TENANCY")
+        user = os.getenv("OCI_USER_OCID") or os.getenv("OCI_USER") or os.getenv("USER")
+        fingerprint = os.getenv("OCI_FINGERPRINT") or os.getenv("FINGERPRINT")
+        region = os.getenv("OCI_REGION", "ap-singapore-1")
+        private_key = os.getenv("OCI_PRIVATE_KEY")
+        key_file = os.getenv("OCI_KEY_FILE")
+
+        config = {
+            "user": user,
+            "fingerprint": fingerprint,
+            "tenancy": tenancy,
+            "region": region,
+        }
+
+        if private_key and private_key.strip():
+            config["key_content"] = private_key
+        elif key_file and os.path.exists(key_file):
+            config["key_file"] = key_file
 
     try:
         oci.config.validate_config(config)
+        compartment_id = config.get("tenancy")
         compute_client = oci.core.ComputeClient(config)
         
         print(f"🔍 [SEMAKAN PINTAR] Memeriksa kewujudan VM {args.shape} di OCI...")
@@ -76,17 +75,14 @@ def check_vm():
             print(f"📌 Target Shape  : {vm.shape}")
             print(f"📌 Instance ID   : {vm.id}")
             print("=" * 65 + "\n")
-            
-            set_github_output("vm_exists", "true")
-            sys.exit(0)
+            # Matikan workflow dengan exit 1 supaya step tembakan tidak dijalankan
+            sys.exit(1)
         else:
-            print(f"✅ Tiada VM {args.shape} yang aktif dijumpai. Memulakan proses menembak slot...\n")
-            set_github_output("vm_exists", "false")
+            print(f"✅ Tiada VM {args.shape} yang aktif dijumpai. Memulakan tembakan...\n")
             sys.exit(0)
 
     except Exception as e:
-        print(f"⚠️ [AMARAN SEMAKAN VM]: Gagal menyemak status VM ({e}). Meneruskan tembakan sebagai langkah berjaga-jaga...")
-        set_github_output("vm_exists", "false")
+        print(f"⚠️ [AMARAN SEMAKAN VM]: Gagal menyemak status VM ({e}). Meneruskan tembakan...")
         sys.exit(0)
 
 if __name__ == "__main__":

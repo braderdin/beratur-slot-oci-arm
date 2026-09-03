@@ -46,7 +46,7 @@ jobs:
           printf '%s\n' "${{ secrets.OCI_SSH_PUBLIC_KEY }}" > ~/.ssh/oci_arm_grabber.pub
 
       - name: Check VM status
-        run: python3 check_vm_status.py
+        run: python3 check_vm_status.py --shape ARM
 
       - name: Attempt launch
         id: attempt
@@ -54,7 +54,7 @@ jobs:
           set +e
           for i in {1..20}; do
             echo "🎯 --- Tembakan ARM ke-$i ---"
-            python3 grabber.py || true
+            python3 grabber.py --once || true
             sleep 30
           done
 
