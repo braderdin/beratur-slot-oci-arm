@@ -27,9 +27,9 @@ LOG_FILE = BASE_DIR / "grabber.log"
 SSH_PUB_KEY_FILE = Path.home() / ".ssh" / "oci_arm_grabber.pub"
 
 SHAPE = "VM.Standard.A1.Flex"
-OCPUS = 2
-MEMORY_IN_GBS = 12
-BOOT_VOLUME_GBS = 50
+OCPUS = 1
+MEMORY_IN_GBS = 9
+BOOT_VOLUME_GBS = 100
 DISPLAY_NAME = "oci-arm-free"
 VCN_CIDR = "10.0.0.0/16"
 SUBNET_CIDR = "10.0.1.0/24"
